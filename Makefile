@@ -12,7 +12,10 @@ LOCAL_BUILD_FLAGS ?= $(BUILD_FLAGS)
 LDFLAGS ?= -X=main.version=$(VERSION)
 DOCKERDIR = docker
 
-IMAGE ?= registry.opensource.zalan.do/acid/$(BINARY)
+ECR_REGISTRY ?= ""
+BASE_IMAGE ?= alpine:3.22
+
+IMAGE ?= kernos/acid/$(BINARY)
 TAG ?= $(VERSION)
 GITHEAD = $(shell git rev-parse --short HEAD)
 GITURL = $(shell git config --get remote.origin.url)
@@ -66,7 +69,22 @@ docker: ${DOCKERDIR}/${DOCKERFILE}
 	echo "Version ${VERSION}"
 	echo "CDP tag ${CDP_TAG}"
 	echo "git describe $(shell git describe --tags --always --dirty)"
-	docker build --rm -t "$(IMAGE):$(TAG)$(CDP_TAG)$(DEBUG_FRESH)$(DEBUG_POSTFIX)" -f "${DOCKERDIR}/${DOCKERFILE}" --build-arg VERSION="${VERSION}" .
+	docker build --rm -t "$(IMAGE):$(TAG)$(CDP_TAG)$(DEBUG_FRESH)$(DEBUG_POSTFIX)" \
+		-f "${DOCKERDIR}/${DOCKERFILE}" 			\
+		--build-arg BASE_IMAGE=${BASE_IMAGE}		\
+		--build-arg VERSION="${VERSION}" .
+
+backup:
+	echo `(env)`
+	echo "Tag ${TAG}"
+	echo "Version ${VERSION}"
+	echo "CDP tag ${CDP_TAG}"
+	echo "git describe $(shell git describe --tags --always --dirty)"
+	docker build --rm -t "$(IMAGE):$(TAG)$(CDP_TAG)$(DEBUG_FRESH)$(DEBUG_POSTFIX)" \
+		-f "${DOCKERDIR}/${DOCKERFILE}"			\
+		--build-arg VERSION="${VERSION}" 		\
+		--build-arg BASE_IMAGE="${BASE_IMAGE}"	\
+		${DOCKERDIR}
 
 indocker-race:
 	docker run --rm -v "${GOPATH}":"${GOPATH}" -e GOPATH="${GOPATH}" -e RACE=1 -w ${PWD} golang:1.25.0 bash -c "make linux"
